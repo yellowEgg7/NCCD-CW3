@@ -4,3 +4,5 @@ ip route add default via 80.64.98.254
 
 systemctl start ncat-tcp-broker@389
 systemctl start ncat-udp-echo@389
+
+
