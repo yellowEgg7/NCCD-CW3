@@ -9,3 +9,5 @@ ip link set up dev eth2
 
 ip addr add 10.16.0.0/16 dev eth3
 ip link set up dev eth3
+
+ip route add default via 10.16.0.0/16
