@@ -4,48 +4,32 @@ ip link set up dev eth0
 ip addr add 10.16.0.0/16 dev eth1
 ip link set up dev eth1
 
+ip route add 172.16.1.0/21 via 10.16.0.0
 ip route add 10.0.0.0/21 via 10.16.0.1
 ip route add 172.16.0.0/21 via 10.16.0.2
 ip route add 192.18.0.0/31 via 10.16.0.3
 
-ip route add default via 10.16.0.4
 
-#DMZ filters between zones of trust
+# Clear all existing rules
+iptables -F
 
-# Allow incoming HTTP traffic (port 80)
-iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+# Set default policies
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
 
-# Allow incoming HTTPS traffic (port 443)
-iptables -A INPUT -p tcp --dport 443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+# Allow incoming traffic from the internet to the DMZ zone only on specific ports
+iptables -A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 25 -j ACCEPT
+iptables -A INPUT -i eth0 -p udp --dport 53 -j ACCEPT
 
-# Allow incoming SMTP traffic (port 25)
-iptables -A INPUT -p tcp --dport 25 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+# Allow outgoing traffic from the DMZ zone to the internet only on specific ports
+iptables -A OUTPUT -o eth0 -p tcp --sport 80 -j ACCEPT
+iptables -A OUTPUT -o eth0 -p tcp --sport 443 -j ACCEPT
+iptables -A OUTPUT -o eth0 -p tcp --sport 25 -j ACCEPT
+iptables -A OUTPUT -o eth0 -p udp --sport 53 -j ACCEPT
 
-# Allow incoming DNS traffic (port 53)
-iptables -A INPUT -p udp --dport 53 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-iptables -A INPUT -p tcp --dport 53 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Allow incoming HTTP traffic (port 80)
-iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Allow incoming HTTPS traffic (port 443)
-iptables -A INPUT -p tcp --dport 443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Allow incoming SMTP traffic (port 25)
-iptables -A INPUT -p tcp --dport 25 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Allow incoming DNS traffic (port 53)
-iptables -A INPUT -p udp --dport 53 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-iptables -A INPUT -p tcp --dport 53 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-# Block incoming traffic from the DMZ to the internal subnet
-iptables -A FORWARD -s 172.16.1.0/21 -d 10.0.0.0/21 -j DROP
-
-# Block outgoing traffic from the DMZ to the internal subnet
-iptables -A FORWARD -s 10.0.0.0/21 -d 172.16.1.0/21 -j DROP
-
-# Block incoming traffic from the DMZ to the server subnet
-iptables -A FORWARD -s 172.16.1.0/21  -d 172.16.0.0/21 -j DROP
-
-# Block outgoing traffic from the DMZ to the server subnet
-iptables -A FORWARD -s 172.16.0.0/21 -d 172.16.1.0/21  -j DROP
+# Block all incoming and outgoing traffic from the DMZ zone to the internal network and server network
+iptables -A INPUT -i eth1 -j DROP
+iptables -A OUTPUT -o eth1 -j DROP

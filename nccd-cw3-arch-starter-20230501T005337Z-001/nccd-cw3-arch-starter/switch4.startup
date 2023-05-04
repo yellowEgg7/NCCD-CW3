@@ -6,6 +6,37 @@ ip link set up dev eth1
 
 ip route add 172.16.1.0/21 via 10.16.0.0
 ip route add 10.0.0.0/21 via 10.16.0.1
+ip route add 172.16.0.0/21 via 10.16.0.2
 ip route add 192.18.0.0/31 via 10.16.0.3
 
 ip route add default via 10.16.0.4
+
+# Clear all existing rules
+iptables -F
+
+# Set default policies
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
+
+# Allow incoming and outgoing traffic within the server network only on specific ports
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p tcp --dport 389 -j ACCEPT
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p udp --dport 389 -j ACCEPT
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p tcp --dport 1194 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p tcp --sport 389 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p udp --sport 389 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 172.16.0.0/21 -d 172.16.0.0/21 -p tcp --sport 1194 -j ACCEPT
+
+# Block all incoming and outgoing traffic from the server network to the internet and the DMZ zone
+iptables -A INPUT -i eth1 -j DROP
+iptables -A OUTPUT -o eth1 -j DROP
+
+# Block all incoming and outgoing traffic from the server network to the internal network, except for specific ports required for the services hosted in the internal network
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 10.0.0.0/21 -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 10.0.0.0/21 -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 10.0.0.0/21 -p tcp --dport 22 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 10.0.0.0/21 -d 172.16.0.0/21 -p tcp --sport 80 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 10.0.0.0/21 -d 172.16.0.0/21 -p tcp --sport 443 -j ACCEPT
+iptables -A OUTPUT -o eth0 -s 10.0.0.0/21 -d 172.16.0.0/21 -p tcp --sport 22 -j ACCEPT
+iptables -A INPUT -i eth0 -s 172.16.0.0/21 -d 10.0.0.0/21 -j DROP
+iptables -A OUTPUT -o eth0 -s 10.0.0.0/21 -d 172.16.0.0/21 -j DROP
